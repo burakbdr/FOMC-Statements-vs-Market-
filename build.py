@@ -1,12 +1,12 @@
 """
-FOMC Communication dashboard — build pipeline.
+FOMC Communication dashboard: build pipeline.
 
 Usage:
-    python build.py            # sample data (offline, deterministic)
-    python build.py --sample   # same as above
-    python build.py --real     # live fetch (needs internet + yfinance, bs4)
+    python build.py            # live data (real); this is the default
+    python build.py --real     # same as above (explicit)
+    python build.py --sample   # offline sample data (deterministic, dev only)
 
-Output: docs/index.html  (self-contained, deployable to any static host)
+Output: docs/index.html  (single static file, deployable to any static host)
 """
 
 import argparse

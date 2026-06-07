@@ -339,11 +339,39 @@ def render(df: pd.DataFrame) -> Path:
         f'</script>'
     )
 
+    # Countdown to the next FOMC statement. The schedule (statement release at
+    # 2 p.m. ET on day two, with the correct EDT/EST offset per meeting) is the
+    # Fed's published calendar through Jan 2028; the script picks the first date
+    # still ahead of the viewer's clock and rolls forward on its own as meetings
+    # pass, falling back to a neutral message once the list runs out.
+    fomc_dates = [
+        "2026-06-17T14:00:00-04:00", "2026-07-29T14:00:00-04:00",
+        "2026-09-16T14:00:00-04:00", "2026-10-28T14:00:00-04:00",
+        "2026-12-09T14:00:00-05:00", "2027-01-27T14:00:00-05:00",
+        "2027-03-17T14:00:00-04:00", "2027-04-28T14:00:00-04:00",
+        "2027-06-09T14:00:00-04:00", "2027-07-28T14:00:00-04:00",
+        "2027-09-15T14:00:00-04:00", "2027-10-27T14:00:00-04:00",
+        "2027-12-08T14:00:00-05:00", "2028-01-26T14:00:00-05:00",
+    ]
+    countdown_script = (
+        "<script>(function(){var M=" + json.dumps(fomc_dates) + ";"
+        "var d=document.getElementById('cd-date'),t=document.getElementById('cd-timer');"
+        "if(!d||!t)return;"
+        "function p(n){return String(n).padStart(2,'0');}"
+        "function nx(){var now=Date.now();for(var i=0;i<M.length;i++){var x=new Date(M[i]).getTime();if(x>now)return x;}return null;}"
+        "function fmt(x){return new Date(x).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'});}"
+        "function tick(){var g=nx();if(g===null){d.textContent='Schedule to be announced';t.textContent='';return;}"
+        "d.textContent=fmt(g);var s=Math.max(0,g-Date.now());"
+        "var dd=Math.floor(s/864e5),hh=Math.floor(s%864e5/36e5),mm=Math.floor(s%36e5/6e4),ss=Math.floor(s%6e4/1e3);"
+        "t.textContent=dd+'d '+p(hh)+':'+p(mm)+':'+p(ss);}"
+        "tick();setInterval(tick,1000);})();</script>"
+    )
+
     timeline_note = (
-        "Every post-meeting statement since 1994, sized by word count and colored "
-        "by the sitting chair. Short under Greenspan, ballooning through the crisis "
-        "and Yellen years, easing under Powell. A new chair appears once a real "
-        "statement exists for them."
+        "Every statement since 1994, one bar per meeting, sized by word count and "
+        "colored by the sitting chair. Short under Greenspan, ballooning through the "
+        "crisis and Yellen years, easing under Powell, and now Warsh. A new chair "
+        "appears once a real statement exists for them."
     )
 
     # (title, note, figure, div_id) — order defines the section numbering.
@@ -351,18 +379,18 @@ def render(df: pd.DataFrame) -> Path:
         ("How long are Fed statements?", timeline_note,
          build_timeline_figure(df), "timeline-chart"),
         ("Statements vs. the VIX",
-         "Each dot is one meeting: the peak VIX — a gauge of expected US stock-market "
-         "volatility — in the six weeks before it (horizontal) against the statement's "
+         "Each dot is one meeting: the peak VIX (a gauge of expected US stock market "
+         "volatility) in the six weeks before it (horizontal) against the statement's "
          "length (vertical), following Apollo's original chart. The box reports two "
          "correlations: the raw figure across the whole sample, held down by the long "
          "statements of the calm Yellen years, and a detrended figure that compares the "
          "change from one meeting to the next, stripping out that era drift to isolate "
-         "the short-run link between volatility and length.",
+         "the immediate link between volatility and length.",
          build_vix_figure(df), "vix-chart"),
         ("Statements and the VIX, Apollo view",
          "Statement word count (ink, left axis) and the peak VIX in the six weeks before "
          "each meeting (red, right axis), over time. It shows <em>where</em> the two move "
-         "together — the crisis spikes of 2008 and 2020 — even though, as the scatter "
+         "together, the crisis spikes of 2008 and 2020, even though, as the scatter "
          "makes clear, the overall relationship is weak. Dotted lines mark each change "
          "of chair.",
          build_apollo_figure(df), "apollo-chart"),
@@ -378,10 +406,10 @@ def render(df: pd.DataFrame) -> Path:
             rates = None
         if rates is not None and not rates.empty:
             specs.append((
-                "The federal funds rate and the two-year Treasury",
-                "The federal funds rate (ink) against the two-year Treasury yield (red), "
-                "both in percent. The two-year yield is largely the market's bet on where "
-                "the fed funds rate is headed over the coming two years — so when it sits "
+                "The federal funds rate and the two year Treasury",
+                "The federal funds rate (ink) against the two year Treasury yield (red), "
+                "both in percent. The two year yield is largely the market's bet on where "
+                "the fed funds rate is headed over the coming two years, so when it sits "
                 "<em>above</em> the funds rate, markets are pricing rate rises (a hawkish "
                 "path); when <em>below</em>, cuts. Read it alongside the latest "
                 "statement's tone: does the Fed's language match where the market thinks "
@@ -416,8 +444,9 @@ def render(df: pd.DataFrame) -> Path:
         note = (
             f"The latest statement, dated {s['statement_date']}, is classified sentence "
             f"by sentence with {method} and then aggregated. Its net score of "
-            f"{s['net_score']:+.2f} — on a scale from −1 (dovish) to +1 (hawkish) — "
-            f"reads as <strong>{s['label']}</strong> across {s['n_sentences']} sentences."
+            f"{s['net_score']:+.2f} (a scale where negative is dovish, positive "
+            f"hawkish) reads as <strong>{s['label']}</strong> across "
+            f"{s['n_sentences']} sentences."
         )
         ex_rows = ""
         if s.get("example_hawkish"):
@@ -459,7 +488,7 @@ def render(df: pd.DataFrame) -> Path:
         low = lab.lower()
         tone_color = ACCENT if "hawk" in low else NAVY if "dov" in low else MUTED
     else:
-        tone_value = "—"
+        tone_value = "n/a"
         tone_sub = "Latest tone · run --real"
         tone_color = MUTED
 
@@ -472,13 +501,14 @@ def render(df: pd.DataFrame) -> Path:
         for c in chair_order
     )
 
-    src_note = ("Illustrative sample data — run the pipeline with <code>--real</code> "
+    src_note = ("Illustrative sample data. Run the pipeline with <code>--real</code> "
                 "to populate live figures." if meta["source"] == "sample"
                 else "Live data from the Federal Reserve and market sources.")
 
     html = TEMPLATE.format(
         chart_sections=sections_html,
         plotly_script=plotly_script,
+        countdown_script=countdown_script,
         sentiment_section=sentiment_section,
         tabs=tabs,
         freqs_json=json.dumps(freqs),
@@ -505,7 +535,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>The Length of Fed Words — FOMC Communication Monitor</title>
+<title>The Length of Fed Words · FOMC Communication Monitor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -524,7 +554,15 @@ TEMPLATE = r"""<!DOCTYPE html>
     background-size:22px 22px;
   }}
   .wrap{{max-width:1080px; margin:0 auto; padding:48px 28px 80px}}
-  .masthead{{border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:8px}}
+  .masthead{{border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:8px;
+    display:flex; justify-content:space-between; align-items:flex-end; gap:24px 40px; flex-wrap:wrap}}
+  .mast-left{{min-width:0}}
+  .countdown{{font-family:"IBM Plex Mono",monospace; text-align:right; padding-bottom:6px}}
+  .cd-label{{font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted)}}
+  .cd-date{{font-family:"Fraunces",serif; font-size:18px; color:var(--ink); margin-top:3px}}
+  .cd-timer{{font-size:23px; color:var(--accent); margin-top:3px;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em}}
+  @media(max-width:640px){{ .countdown{{text-align:left}} }}
   .kicker{{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.22em;
     text-transform:uppercase; color:var(--accent); margin:0 0 10px}}
   h1{{font-family:"Fraunces",serif; font-weight:900; font-size:clamp(34px,6vw,62px);
@@ -596,17 +634,24 @@ TEMPLATE = r"""<!DOCTYPE html>
 <div class="wrap">
 
   <header class="masthead">
-    <p class="kicker">FOMC Communication Monitor</p>
-    <h1>The Length of<br>Fed Words</h1>
+    <div class="mast-left">
+      <p class="kicker">FOMC Communication Monitor</p>
+      <h1>The Length of<br>Fed Words</h1>
+    </div>
+    <div class="countdown" aria-live="polite">
+      <div class="cd-label">Next statement</div>
+      <div class="cd-date" id="cd-date"></div>
+      <div class="cd-timer" id="cd-timer"></div>
+    </div>
   </header>
-  <p class="standfirst">How long are the Federal Reserve's post-meeting statements — and
-  does length track the market's mood? Following every FOMC statement since 1994, this
-  dashboard finds that length owes more to each chair's style than to volatility, the
-  two aligning mainly in a crisis; it then sets the latest statement's hawkish-or-dovish
-  tone against the rate path the market is pricing.</p>
+  <p class="standfirst">How long are the Federal Reserve's statements, and does length
+  track the market's mood? Following every FOMC statement since 1994, this dashboard
+  finds that length owes more to each chair's style than to volatility, the two aligning
+  mainly in a crisis; it then sets the latest statement's hawkish or dovish tone against
+  the rate path the market is pricing.</p>
 
   <div class="meta-row">
-    <span>Statement length · six-week peak VIX · latest-statement tone</span>
+    <span>Statement length · peak VIX over six weeks · latest statement tone</span>
     <span>{n_meetings} meetings</span>
     <span>Updated {generated}</span>
   </div>
@@ -690,7 +735,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     const base = CHAIR_COLORS[chair];
 
     // Size the LARGEST word to the canvas (bounded), not an open-ended multiple of
-    // its weight — so even the biggest term fits. Fewer words -> a touch larger.
+    // its weight, so even the biggest term fits. Fewer words give a touch larger.
     const fill = Math.min(1.7, Math.sqrt(all.length / n));
     const maxFont = Math.min(cssH * 0.24, cssW * 0.13) * fill * dpr;
 
@@ -735,6 +780,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   window.addEventListener("load", () => selectChair(activeChair));
 </script>
+{countdown_script}
 </body>
 </html>
 """

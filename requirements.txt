@@ -1,0 +1,19 @@
+# Core (needed for sample build + rendering)
+pandas>=2.0
+plotly>=5.20
+
+# Real-data mode only (python build.py --real)
+yfinance>=0.2.40
+requests>=2.31
+beautifulsoup4>=4.12
+
+# Latest-statement sentiment (a HuggingFace FOMC stance classifier). Only needed
+# for the "tone of the latest statement" section; downloads the model on first run
+# (DistilBERT ~250MB; RoBERTa-large ~1.4GB). Without these, --real still builds
+# everything else and just omits that section.
+# NOTE: current transformers requires torch >= 2.4 (older torch is auto-disabled).
+transformers>=4.30
+torch>=2.4
+
+# Optional: static PNG export of the chart for QA
+# kaleido==0.2.1

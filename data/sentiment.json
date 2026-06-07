@@ -1,0 +1,21 @@
+{
+  "n_sentences": 12,
+  "counts": {
+    "Dovish": 3,
+    "Hawkish": 2,
+    "Neutral": 7
+  },
+  "pct": {
+    "Dovish": 25.0,
+    "Hawkish": 16.7,
+    "Neutral": 58.3
+  },
+  "net_score": -0.083,
+  "label": "Neutral",
+  "label_logic_version": 2,
+  "example_hawkish": "Recent indicators suggest that economic activity has been expanding at a solid pace.",
+  "example_dovish": "The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.",
+  "statement_date": "2026-04-29",
+  "text_sha": "cf394277f898",
+  "model": "achen0525/DistilBERT_FOMC_Classifier"
+}

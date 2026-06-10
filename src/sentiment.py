@@ -1,28 +1,30 @@
 """
 Hawkish / Dovish / Neutral stance of the LATEST FOMC statement.
 
-Model-agnostic: works with any 3-class FOMC stance classifier. Currently set to a
-DistilBERT classifier as a stopgap while access to gtfintechlab/FOMC-RoBERTa
-(Shah, Paturi & Chava, "Trillion Dollar Words", ACL 2023) is pending — switch
-MODEL_NAME back when it's granted. Labels are resolved safely: readable labels are
-normalized, generic LABEL_n need an explicit entry in _LABEL_OVERRIDES, and an
-unknown label raises rather than guessing (so hawk/dove can never be flipped).
+Uses gtfintechlab/FOMC-RoBERTa, the RoBERTa-large classifier from "Trillion Dollar
+Words" (Shah, Paturi & Chava, ACL 2023, https://aclanthology.org/2023.acl-long.368/).
+The model and its dataset are released under CC BY-NC 4.0, and the model is gated on
+Hugging Face, so the build machine must be authenticated (run `huggingface-cli login`
+or set HF_TOKEN in the environment or .env) to download it.
 
-The classifier is sentence-level, so we split the statement, classify each
-sentence, and aggregate into a distribution + a net hawk-dove score. Heavy deps
-(torch, transformers) are imported lazily. Nothing here is ever faked: if the
-model can't run, the caller writes no sentiment file and the dashboard omits the
-section.
+Labels are resolved safely: readable labels are normalized, generic LABEL_n are mapped
+via the model's documented interpretation in _LABEL_OVERRIDES, and an unknown label
+raises rather than guessing, so hawkish and dovish can never be silently flipped.
+
+The classifier is sentence level, so we split the statement, classify each sentence,
+and aggregate into a distribution plus a net hawk minus dove score. Heavy deps (torch,
+transformers) are imported lazily. Nothing here is ever faked: if the model can't run,
+the caller writes no sentiment file and the dashboard omits the section.
 """
 
 from __future__ import annotations
 
 import re
 
-# Active model. TEMPORARY: a DistilBERT FOMC classifier while access to
-# gtfintechlab/FOMC-RoBERTa is pending. Switch back to "gtfintechlab/FOMC-RoBERTa"
-# (one line) once the gated request is approved.
-MODEL_NAME = "achen0525/DistilBERT_FOMC_Classifier"
+# Active model: gtfintechlab/FOMC-RoBERTa, the RoBERTa-large hawkish/dovish/neutral
+# classifier from the Trillion Dollar Words paper (ACL 2023). Gated on Hugging Face,
+# so the build machine must be logged in (huggingface-cli login) or have HF_TOKEN set.
+MODEL_NAME = "gtfintechlab/FOMC-RoBERTa"
 
 # Bump when the net-score -> label band logic changes, so cached results get
 # relabeled (without re-running the model). v2: neutral band widened to ±0.10.
@@ -30,16 +32,14 @@ LABEL_LOGIC_VERSION = 2
 
 # Most fine-tuned models emit human-readable labels (Hawkish/Dovish/Neutral),
 # which we normalize automatically. Models that emit generic LABEL_0/1/2 carry a
-# model-specific meaning, so each such model MUST be listed here — we never guess
-# a mapping, because flipping hawk <-> dove would silently mislead.
+# model-specific meaning, so each such model MUST be listed here. We never guess a
+# mapping, because flipping hawk and dove would silently mislead.
 _LABEL_OVERRIDES = {
-    # Verified (Trillion Dollar Words, ACL 2023):
+    # Verified against the official model card's "Label Interpretation"
+    # (huggingface.co/gtfintechlab/FOMC-RoBERTa): LABEL_0 Dovish, LABEL_1 Hawkish,
+    # LABEL_2 Neutral.
     "gtfintechlab/FOMC-RoBERTa": {"LABEL_0": "Dovish", "LABEL_1": "Hawkish",
                                   "LABEL_2": "Neutral"},
-    # Determined empirically (clearly-hawkish -> LABEL_1, dovish -> LABEL_0,
-    # neutral -> LABEL_2). Same encoding as the Trillion Dollar Words dataset.
-    "achen0525/DistilBERT_FOMC_Classifier": {"LABEL_0": "Dovish", "LABEL_1": "Hawkish",
-                                             "LABEL_2": "Neutral"},
 }
 
 
@@ -75,14 +75,18 @@ def split_sentences(text: str) -> list[str]:
 
 
 def _load_classifier():
-    """Lazy-build the HF text-classification pipeline. Raises if deps/model absent."""
+    """
+    Lazy-build the HF text-classification pipeline, matching the model card's
+    documented usage (do_lower_case, do_basic_tokenize, num_labels=3) and using the
+    model's own config for the label set. Raises if the deps or the gated model are
+    unavailable (e.g. not logged in to Hugging Face).
+    """
     from transformers import (AutoConfig, AutoModelForSequenceClassification,
                               AutoTokenizer, pipeline)
-    # Use each model's own config (labels, num_labels) — don't force a count, so
-    # this works for any 3-class FOMC classifier, not just one architecture.
-    tok = AutoTokenizer.from_pretrained(MODEL_NAME)
+    tok = AutoTokenizer.from_pretrained(MODEL_NAME, do_lower_case=True,
+                                        do_basic_tokenize=True)
     config = AutoConfig.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=3)
     return pipeline("text-classification", model=model, tokenizer=tok, config=config,
                     framework="pt", device=-1)
 

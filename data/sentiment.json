@@ -1,21 +1,21 @@
 {
   "n_sentences": 12,
   "counts": {
-    "Dovish": 3,
-    "Hawkish": 2,
-    "Neutral": 7
+    "Dovish": 1,
+    "Hawkish": 3,
+    "Neutral": 8
   },
   "pct": {
-    "Dovish": 25.0,
-    "Hawkish": 16.7,
-    "Neutral": 58.3
+    "Dovish": 8.3,
+    "Hawkish": 25.0,
+    "Neutral": 66.7
   },
-  "net_score": -0.083,
-  "label": "Neutral",
+  "net_score": 0.167,
+  "label": "Hawkish-leaning",
   "label_logic_version": 2,
-  "example_hawkish": "Recent indicators suggest that economic activity has been expanding at a solid pace.",
-  "example_dovish": "The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.",
+  "example_hawkish": "Inflation is elevated, in part reflecting the recent increase in global energy prices.",
+  "example_dovish": "Job gains have remained low, on average, and the unemployment rate has been little changed in recent months.",
   "statement_date": "2026-04-29",
   "text_sha": "cf394277f898",
-  "model": "achen0525/DistilBERT_FOMC_Classifier"
+  "model": "gtfintechlab/FOMC-RoBERTa"
 }

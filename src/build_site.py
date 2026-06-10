@@ -438,12 +438,16 @@ def render(df: pd.DataFrame) -> Path:
         except Exception:
             pass
         model = s.get("model", "")
-        is_provisional = "gtfintechlab/FOMC-RoBERTa" not in model
-        method = ("an interim DistilBERT classifier" if is_provisional
-                  else "FOMC-RoBERTa (Trillion Dollar Words, ACL 2023)")
+        if "FOMC-RoBERTa" in model:
+            method = ('FOMC-RoBERTa, the RoBERTa-large classifier from the '
+                      '<a href="https://aclanthology.org/2023.acl-long.368/" '
+                      'target="_blank" rel="noopener">Trillion Dollar Words</a> paper '
+                      '(Shah, Paturi, and Chava, ACL 2023)')
+        else:
+            method = "a sentence level FOMC stance classifier"
         note = (
             f"The latest statement, dated {s['statement_date']}, is classified sentence "
-            f"by sentence with {method} and then aggregated. Its net score of "
+            f"by sentence with {method}, then aggregated. Its net score of "
             f"{s['net_score']:+.2f} (a scale where negative is dovish, positive "
             f"hawkish) reads as <strong>{s['label']}</strong> across "
             f"{s['n_sentences']} sentences."
@@ -586,6 +590,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   .sec-head h2{{font-family:"Fraunces",serif; font-weight:600; font-size:26px; margin:0}}
   .sec-head .no{{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--accent)}}
   .sec-note{{color:#4A443C; font-size:15px; max-width:64ch; margin:0 0 18px}}
+  .sec-note a{{color:var(--accent); text-decoration:underline; text-underline-offset:2px}}
   .tone-examples{{margin-top:14px; display:grid; gap:9px}}
   .tone-ex{{display:flex; gap:12px; align-items:baseline; margin:0;
     font-family:"Newsreader",Georgia,serif}}

@@ -22,8 +22,11 @@ The screen has these parts, in order:
 5. **A word cloud explorer:** click a chair to see the vocabulary that defined their
    statements.
 6. **The tone of the latest statement:** a hawkish, dovish, or neutral reading of the
-   most recent statement (real mode only; never fabricated, and omitted if it can't be
-   computed). Shown last because it reads one statement, not the whole history.
+   most recent statement, classified sentence by sentence with
+   [FOMC-RoBERTa](https://aclanthology.org/2023.acl-long.368/) (the model from the
+   "Trillion Dollar Words" paper, ACL 2023). Real mode only; never fabricated, and
+   omitted if it can't be computed. Shown last because it reads one statement, not the
+   whole history.
 
 A new chair appears automatically once a real statement exists for them; nothing is
 projected or fabricated.
@@ -99,7 +102,11 @@ Swap the backend (sample or real) and nothing else changes.
   `date, word_count` is written to `statements.csv`; the raw text is not persisted.
   `fetch_rates_real` pulls the Fed funds rate (`DFF`) and two year yield (`DGS2`) from
   **FRED**: set `FRED_API_KEY` in the environment or a `.env` file at the project root.
-  Without the key, the Fed funds vs. 2Y section is simply omitted (never faked).
+  Without the key, the Fed funds vs. 2Y section is simply omitted (never faked). The
+  latest statement's tone is classified by **FOMC-RoBERTa** and written to
+  `sentiment.json`. That model is gated on Hugging Face, so the build machine must be
+  authenticated (`huggingface-cli login`, or `HF_TOKEN` in the environment or `.env`);
+  without access, the tone section is omitted rather than faked.
 
   **Authenticity:** nothing is fabricated in real mode. A chair with no published
   statements (e.g. Warsh before his first one) simply doesn't appear: no projected bars,
@@ -139,5 +146,18 @@ only manual steps. There is no backend or database.
 
 ---
 
+## Credits and references
+
 Inspired by Apollo / Torsten Sløk. Original article:
 https://www.apollo.com/wealth/the-daily-spark/the-number-of-words-in-the-fomc-statement-likely-going-down
+
+The tone classifier is [FOMC-RoBERTa](https://huggingface.co/gtfintechlab/FOMC-RoBERTa),
+from:
+
+> Agam Shah, Suvan Paturi, and Sudheer Chava. 2023. **Trillion Dollar Words: A New
+> Financial Dataset, Task & Market Analysis.** In *Proceedings of the 61st Annual Meeting
+> of the Association for Computational Linguistics (Volume 1: Long Papers)*, pages
+> 6664 to 6679. Paper: https://aclanthology.org/2023.acl-long.368/
+
+The model and its dataset are released under **CC BY-NC 4.0** (non-commercial use with
+attribution). This dashboard uses them on that basis.
